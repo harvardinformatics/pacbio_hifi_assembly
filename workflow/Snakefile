@@ -1,48 +1,24 @@
 import yaml
 import glob, os, pathlib
 
-#load sample sheet into dictionary where key=sample ID, value=file paths
-samsheet="/n/holylfs05/LABS/informatics/Everyone/scrubjay/RAW_DATA/sample_sheet.txt"
-samdict = {}
-with open(samsheet) as fin:
-    for line in fin:
-        line = line.rstrip()
-        line = line.replace(",", " ")
-        data = line.split("\t")
-        #samdict[data[0]] = data[1]
-        samdict[data[0]] = {'reads' : data[2], 'HiC' : data[3]}
 
-#Change these variables:
-input_dir = "/n/holylfs05/LABS/informatics/Everyone/scrubjay/RAW_DATA"
-samples = ["AW_366497"]
-#samples = list(samdict.keys())
-haplotypes=["p_ctg", "hap1.p_ctg", "hap2.p_ctg"] #changed these to match hifi output...THO won't match with Hi-C assembly!! >:|
-hifiasm_path = "/n/holylfs05/LABS/informatics/Everyone/scrubjay/hifiasm"
-hifi_outdir = "results/hifiasm_output_RAW"
-assem_outdir = "results/assemblies"
+#CONFIG file
+configfile: "config/config.yaml"
 
+#Gets info from config file:
+samples = config["sample"]
+haplotypes=["p_ctg", "hap1.p_ctg", "hap2.p_ctg"]
+hifi_outdir = config["hifi_outdir"]
+assem_outdir = config["assem_outdir"]
 
-def get_reads(wildcards):
-    files = samdict[wildcards.sample]['reads'].split(" ")
-    return files
-
-def get_hifi_params(wildcards):
-    if samdict[wildcards.sample]['HiC'] == "none":
-        return ["false", 'none', "none"]
-#        return hifi_outdir + "/" + wildcards.sample
-    else:
-        #first split samdict[wildcards.sample]['HiC'] on space into a list
-        hic_reads = samdict[wildcards.sample]['HiC'].split(" ")
-#        return hifi_outdir + "/" + wildcards.sample + " --h1 " + hic_reads[0] + "--h2 " + hic_reads[1]
-        return ["true", hic_reads[0], hic_reads[1]]
 
 rule all:
     input:
-        expand("results/assembly_qc/{sample}-{haplo}-quast/report.txt", haplo=haplotypes, sample=samples)
+        expand("results/assembly_qc/{sample}.{haplo}.quast/report.txt", haplo=haplotypes, sample=samples)
 
 rule merge:
     input:
-        get_reads
+        config["reads"]
     output:
         temp("{sample}_combined_reads.fastq.gz")
     shell:
@@ -58,32 +34,45 @@ rule adapterfilt:
     shell:
         "cutadapt --discard-trimmed --overlap=35 -b ATCTCTCTCAACAACAACAACGGAGGAGGAGGAAAAGAGAGAGAT -b ATCTCTCTCTTTTCCTCCTCCTCCGTTGTTGTTGTTGAGAGAGAT -o {output} {input}"
 
+#WIP: how to handle if want diploid assembly, or primary only? Separate rules?? Flags??
+#Three options: hifi-only (partially phased or primary/alternate), HiC integrated, trio-binning (don't include, involves lots of steps)
+#NOTE: need add option for primary only alternate assembly name!
 rule hifi:
     input:
         hifi_outdir + "/{sample}.filt.fastq.gz"
     output:
-        pasm = hifi_outdir + "/{sample}.p_ctg.gfa", #changed this to have single wildcard, will it work?
+        pasm = hifi_outdir + "/{sample}.p_ctg.gfa",
         hap1asm = hifi_outdir + "/{sample}.hap1.p_ctg.gfa",
         hap2asm = hifi_outdir + "/{sample}.hap2.p_ctg.gfa"
+    conda:
+        "envs/hifiasm.yaml"
     params:
-        hic = get_hifi_params,
+        hic = config["use_hiC"]
+        hic1 = config["hiC_read1"]
+        hic2 = config["hiC_read2"]
+        prionly = config["primary_only"]
         outdir = hifi_outdir + "/{sample}"
     threads: 16
+    log:
+        "logs/{sample}.hifiasm.out"
     shell:
         """
-        if [[ "{params.hic[0]}" == "true" ]]; then
-            {hifiasm_path}/hifiasm -t {threads} --h1 {params.hic[1]} --h2 {params.hic[2]} -o {params.outdir} {input}
+        if [[ "{params.hic}" == "true" ]]; then
+            hifiasm -t {threads} --h1 {params.hic1} --h2 {params.hic2} -o {params.outdir} {input} 2> {log}
             mv {params.outdir}.hic.p_ctg.gfa {output.pasm}
             mv {params.outdir}.hic.hap1.p_ctg.gfa {output.hap1asm}
             mv {params.outdir}.hic.hap2.p_ctg.gfa {output.hap2asm}
-        elif [[ "{params.hic[0]}" == "false" ]]; then
-            {hifiasm_path}/hifiasm -t {threads} -o {params.outdir} {input}
+        elif [[ "{params.hic}" == "false" ]]; then
+            hifiasm -t {threads} -o {params.outdir} {input} 2> {log}
             mv {params.outdir}.bp.p_ctg.gfa {output.pasm}
             mv {params.outdir}.bp.hap1.p_ctg.gfa {output.hap1asm}
             mv {params.outdir}.bp.hap2.p_ctg.gfa {output.hap2asm}
+        elif [[ "params.prionly" == "true" ]]; then
+            hifiasm -t {threads} -o {params.outdir} --primary {input} 2> {log}
+            mv {params.outdir}.asm.p_ctg.gfa {output.pasm}
+            mv {params.outdir}.asm.a_ctg.gfa {output.pasm}
         fi
         """
-#        "{hifiasm_path}/hifiasm -t {threads} -o {params} {input}"
 
 rule gfa_to_fasta:
     input:
@@ -104,14 +93,14 @@ rule rename_contig:
 rule quast:
     input:
         assem_outdir + "/{sample}.{haplo}.fa"
-    params: #trying alternative way that's less hack-y
-        prefix="results/assembly_qc/{sample}-{haplo}-quast"
+    params:
+        prefix="results/assembly_qc/{sample}.{haplo}.quast"
     output:
-        "results/assembly_qc/{sample}-{haplo}-quast/report.txt"
+        "results/assembly_qc/{sample}.{haplo}.quast/report.txt"
     conda:
         "envs/quast.yaml"
     threads: 4
     log:
-        "logs/{sample}-{haplo}/quast_log/"
+        "logs/{sample}.{haplo}/quast_log/"
     shell:
         "quast.py -t {threads} --eukaryote -o {params.prefix} {input} &> {log}"

@@ -3,14 +3,16 @@
 ##############################
 
 sample: "MCZ_Cryo"               #Name of the sample to act as base name
-reads: "path/to/reads"           #Reads used to generate assembly
-busco_mode: "geno"                #busco run mode (geno = genome assembly; prot = protein set; tran = transcript assembly)
-busco_lineage: "bacteria_odb10"   #busco lineage to use for assessment
+reads: "path/to/reads.fastq"           #Reads used to generate assembly; if multiple files, separate them by SPACES
 
-##############################
-# Variables you DO NOT need to change
-# if you do, ensure all path/directory names are followed by a "/"
-# These variables control the output of the fastq2bam workflow. You don't need to change these, but if you do please have a forward slash follow name!
-##############################
+#Hifiasm options
+use_hiC: "false"  #Indicate whether using HiC data to aid in with assembly (note, NOT the same as HiC scaffolding!)
+hiC_read1: " "  #If using HiC,
+hiC_read2: " "
 
-#output: "results/"
+primary_only: "false"
+
+#Variables you DON'T need to change:
+#Output naming:
+hifi_outdir: "results/hifiasm_output_RAW"
+assem_outdir: "results/assembly"
