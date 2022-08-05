@@ -36,7 +36,6 @@ rule adapterfilt:
 
 #WIP: how to handle if want diploid assembly, or primary only? Separate rules?? Flags??
 #Three options: hifi-only (partially phased or primary/alternate), HiC integrated, trio-binning (don't include, involves lots of steps)
-#NOTE: need add option for primary only alternate assembly name!
 rule hifi:
     input:
         hifi_outdir + "/{sample}.filt.fastq.gz"
@@ -70,7 +69,6 @@ rule hifi:
         elif [[ "params.prionly" == "true" ]]; then
             hifiasm -t {threads} -o {params.outdir} --primary {input} 2> {log}
             mv {params.outdir}.asm.p_ctg.gfa {output.pasm}
-            mv {params.outdir}.asm.a_ctg.gfa {output.pasm}
         fi
         """
 
