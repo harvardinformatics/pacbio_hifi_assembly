@@ -3,10 +3,8 @@ import glob, os, pathlib
 
 
 #Config file
-configfile: "config/config.yaml"
+configfile: "../config/config.yaml"
 
-def get_reads:
-    return config["reads"]
 
 #Gets info from config file:
 samples = config["sample"]
@@ -21,11 +19,11 @@ rule all:
 
 rule merge:
     input:
-        get_reads
+        files = config["reads"].split(" ")
     output:
         temp("{sample}_combined_reads.fastq.gz")
     shell:
-        "cat {input} > {output}"
+        "cat {input.files} > {output}"
 
 rule adapterfilt:
     input:
