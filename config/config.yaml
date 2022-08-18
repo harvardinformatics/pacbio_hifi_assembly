@@ -2,8 +2,10 @@
 # Variables you need to change
 ##############################
 
-sample: "MCZ_Cryo"               #Name of the sample to act as base name
-reads: "path/to/reads.fastq"           #Reads used to generate assembly; if multiple files, separate them by SPACES
+sample: "sample_206_npict"               #Name of the sample to act as base name
+reads:
+  A: /n/holyscratch01/informatics/dkhost/bird_hifi/sample_206_reads/m64155e_220728_110902.read.fastq
+  B: /n/holyscratch01/informatics/dkhost/bird_hifi/sample_206_reads/m64155e_220811_192258.reads.fastq
 
 #Hifiasm options
 use_hiC: "false"  #Indicate whether using HiC data to aid in with assembly (note, NOT the same as HiC scaffolding!)

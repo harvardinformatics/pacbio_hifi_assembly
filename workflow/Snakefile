@@ -5,6 +5,9 @@ import glob, os, pathlib
 #Config file
 configfile: "config/config.yaml"
 
+def get_reads:
+    return config["reads"]
+
 #Gets info from config file:
 samples = config["sample"]
 haplotypes=["p_ctg", "hap1.p_ctg", "hap2.p_ctg"]
@@ -18,7 +21,7 @@ rule all:
 
 rule merge:
     input:
-        config["reads"]
+        get_reads
     output:
         temp("{sample}_combined_reads.fastq.gz")
     shell:
@@ -46,10 +49,10 @@ rule hifi:
     conda:
         "envs/hifiasm.yaml"
     params:
-        hic = config["use_hiC"]
-        hic1 = config["hiC_read1"]
-        hic2 = config["hiC_read2"]
-        prionly = config["primary_only"]
+        hic = config["use_hiC"],
+        hic1 = config["hiC_read1"],
+        hic2 = config["hiC_read2"],
+        prionly = config["primary_only"],
         outdir = hifi_outdir + "/{sample}"
     threads: 16
     log:
