@@ -2,7 +2,7 @@ import yaml
 import glob, os, pathlib
 
 
-#CONFIG file
+#Config file
 configfile: "config/config.yaml"
 
 #Gets info from config file:
