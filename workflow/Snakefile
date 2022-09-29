@@ -23,7 +23,7 @@ rule merge:
     output:
         temp("{sample}_combined_reads.fastq.gz")
     shell:
-        "cat {input.files} > {output}"
+        "cat {input.files} | gzip -1 > {output}"
 
 rule adapterfilt:
     input:
