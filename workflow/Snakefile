@@ -17,13 +17,18 @@ rule all:
     input:
         expand("results/assembly_qc/{sample}.{haplo}.quast/report.txt", haplo=haplotypes, sample=samples)
 
-rule merge:
+#WIP: need options for demultiplexing
+rule bam2fastx:
     input:
         files = config["reads"].split(" ")
     output:
-        temp("{sample}_combined_reads.fastq.gz")
+        "{sample}_combined_reads.fastq.gz"
+    conda:
+        "envs/bam2fastx.yaml"
+    params:
+        prefix = "{sample}_combined_reads"
     shell:
-        "cat {input.files} | gzip -1 > {output}"
+        "bam2fastq -o {params.prefix} {input}"
 
 rule adapterfilt:
     input:

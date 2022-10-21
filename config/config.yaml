@@ -2,15 +2,15 @@
 # Variables you need to change
 ##############################
 
-sample: "sample_206_npict"               #Name of the sample to act as base name
-reads: "/n/holyscratch01/informatics/dkhost/bird_hifi/sample_206_reads/m64155e_220728_110902.read.fastq /n/holyscratch01/informatics/dkhost/bird_hifi/sample_206_reads/m64155e_220811_192258.reads.fastq"
+sample: "sample_206_npict"  #Name of the sample to act as base name
+reads: " "  #List of BAM files output from sequencer (include full path). If multiple files, separate by SPACES
 
 #Hifiasm options
 use_hiC: "false"  #Indicate whether using HiC data to aid in with assembly (note, NOT the same as HiC scaffolding!)
-hiC_read1: " "  #If using HiC,
-hiC_read2: " "
+hiC_read1: " "  #If using HiC, include path to first set of reads in pair
+hiC_read2: " "  ##If using HiC, include path to second set of reads in pair
 
-primary_only: "false"
+primary_only: "false" #If want only primary assembly (no haplotypes), set to true
 
 #Variables you DON'T need to change:
 #Output naming:
