@@ -55,26 +55,34 @@ rule hifi:
         hic = config["use_hiC"],
         hic1 = config["hiC_read1"],
         hic2 = config["hiC_read2"],
-        prionly = config["primary_only"],
+        ont = config["use_ont"],
+        ontReads = config["ont_reads"]
         outdir = hifi_outdir + "/{sample}"
     threads: 16
     log:
         "logs/{sample}.hifiasm.out"
-    shell:
+    shell: #The output naming format is slightly different in Hifiasm based on mode; this logic deals with that by renaming output
         """
-        if [[ "{params.hic}" == "true" ]]; then
+        if [[ "{params.hic}" == "true" & "{params.ont}" == "true" ]]; then
+            hifiasm -t {threads} --ul {params.ontReads} --h1 {params.hic1} --h2 {params.hic2} -o {params.outdir} {input} 2> {log}
+            mv {params.outdir}.hic.p_ctg.gfa {output.pasm}
+            mv {params.outdir}.hic.hap1.p_ctg.gfa {output.hap1asm}
+            mv {params.outdir}.hic.hap2.p_ctg.gfa {output.hap2asm}
+        elif [[ "{params.hic}" == "true" & "{params.ont}" == "false" ]]; then
             hifiasm -t {threads} --h1 {params.hic1} --h2 {params.hic2} -o {params.outdir} {input} 2> {log}
             mv {params.outdir}.hic.p_ctg.gfa {output.pasm}
             mv {params.outdir}.hic.hap1.p_ctg.gfa {output.hap1asm}
             mv {params.outdir}.hic.hap2.p_ctg.gfa {output.hap2asm}
-        elif [[ "{params.hic}" == "false" ]]; then
+        elif [[ "{params.hic}" == "false" & "{params.ont}" == "true" ]]; then
+            hifiasm -t {threads} --ul {params.ontReads} -o {params.outdir} {input} 2> {log}
+            mv {params.outdir}.bp.p_ctg.gfa {output.pasm}
+            mv {params.outdir}.bp.hap1.p_ctg.gfa {output.hap1asm}
+            mv {params.outdir}.bp.hap2.p_ctg.gfa {output.hap2asm}
+        else
             hifiasm -t {threads} -o {params.outdir} {input} 2> {log}
             mv {params.outdir}.bp.p_ctg.gfa {output.pasm}
             mv {params.outdir}.bp.hap1.p_ctg.gfa {output.hap1asm}
             mv {params.outdir}.bp.hap2.p_ctg.gfa {output.hap2asm}
-        elif [[ "params.prionly" == "true" ]]; then
-            hifiasm -t {threads} -o {params.outdir} --primary {input} 2> {log}
-            mv {params.outdir}.asm.p_ctg.gfa {output.pasm}
         fi
         """
 

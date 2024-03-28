@@ -10,7 +10,9 @@ use_hiC: "false"  #Indicate whether using HiC data to aid in with assembly (note
 hiC_read1: " "  #If using HiC, include path to first set of reads in pair
 hiC_read2: " "  ##If using HiC, include path to second set of reads in pair
 
-primary_only: "false" #If want only primary assembly (no haplotypes), set to true
+#Optional (ultra-long) Nanopore integration
+use_ont: "false" #Indicate whether have nanopore data
+ont_reads: " " #If using Nanopore, add path to COMBINED reads as a fastq file (opt. gzipped fastq)
 
 #Variables you DON'T need to change:
 #Output naming:
