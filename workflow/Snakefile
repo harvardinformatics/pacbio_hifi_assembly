@@ -4,6 +4,7 @@ import glob, os, pathlib
 
 #Config file
 configfile: "../config/config.yaml"
+res_config = yaml.load(open("../config/resources.yaml"),Loader=yaml.FullLoader)
 
 
 #Gets info from config file:
@@ -25,6 +26,9 @@ rule bam2fastx:
         "{sample}_combined_reads.fastq.gz"
     conda:
         "envs/bam2fastx.yaml"
+    resources:
+        mem_mb = res_config["bam2fastq"]["mem_mb"],
+        time = res_config["bam2fastq"]["time"]
     params:
         prefix = "{sample}_combined_reads"
     shell:
@@ -37,12 +41,17 @@ rule adapterfilt:
         temp(hifi_outdir + "/{sample}.filt.fastq.gz")
     conda:
         "envs/adapter.yaml"
+    resources:
+        mem_mb = res_config["adapterfilt"]["mem_mb"],
+        time = res_config["adapterfilt"]["time"]
+    threads:
+        res_config["adapterfilt"]["threads"]
     shell:
-        "cutadapt --discard-trimmed --overlap=35 -b ATCTCTCTCAACAACAACAACGGAGGAGGAGGAAAAGAGAGAGAT -b ATCTCTCTCTTTTCCTCCTCCTCCGTTGTTGTTGTTGAGAGAGAT -o {output} {input}"
+        "cutadapt --discard-trimmed -j {threads} --overlap=35 -b ATCTCTCTCAACAACAACAACGGAGGAGGAGGAAAAGAGAGAGAT -b ATCTCTCTCTTTTCCTCCTCCTCCGTTGTTGTTGTTGAGAGAGAT -o {output} {input}"
 
 #WIP: how to handle if want diploid assembly, or primary only? Separate rules?? Flags??
 #Three options: hifi-only (partially phased or primary/alternate), HiC integrated, trio-binning (don't include, involves lots of steps)
-rule hifi:
+rule hifiasm:
     input:
         hifi_outdir + "/{sample}.filt.fastq.gz"
     output:
@@ -51,6 +60,9 @@ rule hifi:
         hap2asm = hifi_outdir + "/{sample}.hap2.p_ctg.gfa"
     conda:
         "envs/hifiasm.yaml"
+    resources:
+        mem_mb = res_config["hifiasm"]["mem_mb"],
+        time = res_config["hifiasm"]["time"]
     params:
         hic = config["use_hiC"],
         hic1 = config["hiC_read1"],
@@ -58,7 +70,8 @@ rule hifi:
         ont = config["use_ont"],
         ontReads = config["ont_reads"]
         outdir = hifi_outdir + "/{sample}"
-    threads: 16
+    threads: 
+        res_config['hifiasm']['threads']
     log:
         "logs/{sample}.hifiasm.out"
     shell: #The output naming format is slightly different in Hifiasm based on mode; this logic deals with that by renaming output
@@ -91,6 +104,9 @@ rule gfa_to_fasta:
         hifi_outdir + "/{sample}.{haplo}.gfa"
     output:
         temp(hifi_outdir + "/{sample}.{haplo}.fa")
+    resources:
+        mem_mb = res_config["gfatofasta"]["mem_mb"],
+        time = res_config["gfatofasta"]["time"]
     shell:
         "awk '/^S/{{print \">\"$2;print $3}}' {input} > {output}"
 
@@ -99,6 +115,9 @@ rule rename_contig:
         hifi_outdir + "/{sample}.{haplo}.fa"
     output:
         assem_outdir + "/{sample}.{haplo}.fa"
+    resources:
+        mem_mb = res_config["renamecontigs"]["mem_mb"],
+        time = res_config["renamecontigs"]["time"]
     shell:
         "awk -v sample={wildcards.sample} -v haplo={wildcards.haplo} 'BEGIN{{FS=\">\"; OFS=\"#\"}} /^>/{{if (haplo ~ /hap/) print \">\"sample,haplo,$2; else print \">\"sample,\"pri\",$2}} !/^>/{{print;}}' {input} > {output}"
 
@@ -111,7 +130,11 @@ rule quast:
         "results/assembly_qc/{sample}.{haplo}.quast/report.txt"
     conda:
         "envs/quast.yaml"
-    threads: 4
+    resources:
+        mem_mb = res_config["quast"]["mem_mb"],
+        time = res_config["quast"]["time"]
+    threads:
+        res_config["quast"]["threads"]
     log:
         "logs/{sample}.{haplo}/quast_log/"
     shell:
