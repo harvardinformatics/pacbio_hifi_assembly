@@ -4,8 +4,6 @@ import glob, os, pathlib
 
 #Config file
 configfile: "../config/config.yaml"
-res_config = yaml.load(open("../config/resources.yaml"),Loader=yaml.FullLoader)
-
 
 #Gets info from config file:
 samples = config["sample"]
@@ -26,13 +24,16 @@ rule bam2fastx:
         "{sample}_combined_reads.fastq.gz"
     conda:
         "envs/bam2fastx.yaml"
-    resources:
-        mem_mb = res_config["bam2fastq"]["mem_mb"],
-        time = res_config["bam2fastq"]["time"]
     params:
         prefix = "{sample}_combined_reads"
     shell:
-        "bam2fastq -o {params.prefix} {input}"
+        """
+        #bam2fastq -o {params.prefix} {input}
+        samtools merge combined_reads.bam {input}
+        bedtools bamtofastq -i combined_reads.bam -fq {params.prefix}.fastq
+        gzip {params.prefix}.fastq 
+        """
+
 
 rule adapterfilt:
     input:
@@ -41,11 +42,8 @@ rule adapterfilt:
         temp(hifi_outdir + "/{sample}.filt.fastq.gz")
     conda:
         "envs/adapter.yaml"
-    resources:
-        mem_mb = res_config["adapterfilt"]["mem_mb"],
-        time = res_config["adapterfilt"]["time"]
     threads:
-        res_config["adapterfilt"]["threads"]
+        resources["adapterfilt"]["threads"]
     shell:
         "cutadapt --discard-trimmed -j {threads} --overlap=35 -b ATCTCTCTCAACAACAACAACGGAGGAGGAGGAAAAGAGAGAGAT -b ATCTCTCTCTTTTCCTCCTCCTCCGTTGTTGTTGTTGAGAGAGAT -o {output} {input}"
 
@@ -60,33 +58,30 @@ rule hifiasm:
         hap2asm = hifi_outdir + "/{sample}.hap2.p_ctg.gfa"
     conda:
         "envs/hifiasm.yaml"
-    resources:
-        mem_mb = res_config["hifiasm"]["mem_mb"],
-        time = res_config["hifiasm"]["time"]
     params:
         hic = config["use_hiC"],
         hic1 = config["hiC_read1"],
         hic2 = config["hiC_read2"],
         ont = config["use_ont"],
-        ontReads = config["ont_reads"]
+        ontReads = config["ont_reads"],
         outdir = hifi_outdir + "/{sample}"
     threads: 
-        res_config['hifiasm']['threads']
+        resources['hifiasm']['threads']
     log:
         "logs/{sample}.hifiasm.out"
     shell: #The output naming format is slightly different in Hifiasm based on mode; this logic deals with that by renaming output
         """
-        if [[ "{params.hic}" == "true" & "{params.ont}" == "true" ]]; then
+        if [[ "{params.hic}" == "true" ]] && [[ "{params.ont}" == "true" ]]; then
             hifiasm -t {threads} --ul {params.ontReads} --h1 {params.hic1} --h2 {params.hic2} -o {params.outdir} {input} 2> {log}
             mv {params.outdir}.hic.p_ctg.gfa {output.pasm}
             mv {params.outdir}.hic.hap1.p_ctg.gfa {output.hap1asm}
             mv {params.outdir}.hic.hap2.p_ctg.gfa {output.hap2asm}
-        elif [[ "{params.hic}" == "true" & "{params.ont}" == "false" ]]; then
+        elif [[ "{params.hic}" == "true" ]] && [[ "{params.ont}" == "false" ]]; then
             hifiasm -t {threads} --h1 {params.hic1} --h2 {params.hic2} -o {params.outdir} {input} 2> {log}
             mv {params.outdir}.hic.p_ctg.gfa {output.pasm}
             mv {params.outdir}.hic.hap1.p_ctg.gfa {output.hap1asm}
             mv {params.outdir}.hic.hap2.p_ctg.gfa {output.hap2asm}
-        elif [[ "{params.hic}" == "false" & "{params.ont}" == "true" ]]; then
+        elif [[ "{params.hic}" == "false" ]] && [[ "{params.ont}" == "true" ]]; then
             hifiasm -t {threads} --ul {params.ontReads} -o {params.outdir} {input} 2> {log}
             mv {params.outdir}.bp.p_ctg.gfa {output.pasm}
             mv {params.outdir}.bp.hap1.p_ctg.gfa {output.hap1asm}
@@ -104,9 +99,6 @@ rule gfa_to_fasta:
         hifi_outdir + "/{sample}.{haplo}.gfa"
     output:
         temp(hifi_outdir + "/{sample}.{haplo}.fa")
-    resources:
-        mem_mb = res_config["gfatofasta"]["mem_mb"],
-        time = res_config["gfatofasta"]["time"]
     shell:
         "awk '/^S/{{print \">\"$2;print $3}}' {input} > {output}"
 
@@ -115,9 +107,6 @@ rule rename_contig:
         hifi_outdir + "/{sample}.{haplo}.fa"
     output:
         assem_outdir + "/{sample}.{haplo}.fa"
-    resources:
-        mem_mb = res_config["renamecontigs"]["mem_mb"],
-        time = res_config["renamecontigs"]["time"]
     shell:
         "awk -v sample={wildcards.sample} -v haplo={wildcards.haplo} 'BEGIN{{FS=\">\"; OFS=\"#\"}} /^>/{{if (haplo ~ /hap/) print \">\"sample,haplo,$2; else print \">\"sample,\"pri\",$2}} !/^>/{{print;}}' {input} > {output}"
 
@@ -130,11 +119,8 @@ rule quast:
         "results/assembly_qc/{sample}.{haplo}.quast/report.txt"
     conda:
         "envs/quast.yaml"
-    resources:
-        mem_mb = res_config["quast"]["mem_mb"],
-        time = res_config["quast"]["time"]
     threads:
-        res_config["quast"]["threads"]
+        resources["quast"]["threads"]
     log:
         "logs/{sample}.{haplo}/quast_log/"
     shell:

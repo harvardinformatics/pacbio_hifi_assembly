@@ -3,4 +3,5 @@ channels:
   - defaults
   - conda-forge
 dependencies:
-  - bam2fastx
+  - bedtools
+  - samtools

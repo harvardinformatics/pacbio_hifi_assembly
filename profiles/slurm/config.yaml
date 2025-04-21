@@ -1,14 +1,67 @@
-jobs: 1000
-restart-times: 3
-max-jobs-per-second: 1
-max-status-checks-per-second: 3
-cores: 10000
-#local-cores: 1
-latency-wait: 60
-use-conda: True
-keep-going: True
-rerun-incomplete: True
-jobscript: "slurm-jobscript.sh"
-cluster: "slurm-submit.py"
-cluster-status: "slurm-status.py"
+executor: slurm
+jobs: 100
+
+set-threads:
+  bam2fastq: 1
+  adapterfilt: 4
+  hifiasm: 20
+  gfatofasta: 1
+  renamecontigs: 1
+  quast: 4
+
+set-resources:
+  bam2fastq:
+    nodes: 1
+    tasks: 1 
+    cpus_per_task: 1
+    mem_mb: 36000
+    runtime: 4320
+    partition: "shared"
+    output: "workflow/logs/bam2fastq-%j.out"
+    error: "workflow/logs/bam2fastq-%j.err"
+  adapterfilt:
+    nodes: 1
+    tasks: 1
+    cpus_per_task: 4
+    mem_mb: 36000
+    runtime: 4320
+    partition: "shared"
+    output: "workflow/logs/adadpterfilt-%j.out"
+    error: "workflow/logs/adapterfilt-%j.err"
+  hifiasm:
+    nodes: 1
+    tasks: 1
+    cpus_per_task: 20
+    mem_mb: 400000
+    runtime: 20160
+    partition: "holy-cow,intermediate"
+    output: "workflow/logs/hifiasm-%j.out"
+    error: "workflow/logs/hifiasm-%j.err"
+  gfatofasta:
+    nodes: 1
+    tasks: 1
+    cpus_per_task: 1
+    mem_mb: 16000
+    runtime: 720
+    partition: "shared"
+    output: "workflow/logs/gfatofasta-%j.out"
+    error: "workflow/logs/gfatofasta-%j.err"
+  renamecontigs:
+    nodes: 1
+    tasks: 1
+    cpus_per_task: 1
+    mem_mb: 8000
+    runtime: 720
+    partition: "shared"
+    output: "workflow/logs/rename-%j.out"
+    error: "workflow/logs/rename-%j.err"
+  quast:
+    nodes: 1
+    tasks: 1
+    cpus_per_task: 4
+    mem_mb: 16000
+    runtime: 720
+    partition: "shared"
+    output: "workflow/logs/quast-%j.out"
+    error: "workflow/logs/quast-%j.err"
 
