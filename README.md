@@ -35,7 +35,7 @@ From the main directory, navigate into the `workflow/` subdirectory, which conta
 
 source /n/holylfs05/LABS/informatics/Users/dkhost/mamba/bin/activate snakemake
 
-snakemake --rerun-incomplete --profile ../profiles/slurm
+snakemake --use-conda --rerun-incomplete --profile ../profiles/slurm
 ```  
 
 Resources needed will depend on the size and complexity of the genome, as will the time to complete. If successful, you should see a subdirectory `workflow/results/` that contains the finished assembly and QC stats!  

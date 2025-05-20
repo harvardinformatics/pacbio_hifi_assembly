@@ -1,6 +1,10 @@
 executor: slurm
 jobs: 100
 
+default-resources:
+  slurm_account: 'informatics'
+  slurm_partition: 'shared'
+
 set-threads:
   bam2fastq: 1
   adapterfilt: 4
@@ -17,8 +21,6 @@ set-resources:
     mem_mb: 36000
     runtime: 4320
     partition: "shared"
-    output: "workflow/logs/bam2fastq-%j.out"
-    error: "workflow/logs/bam2fastq-%j.err"
   adapterfilt:
     nodes: 1
     tasks: 1
@@ -26,8 +28,6 @@ set-resources:
     mem_mb: 36000
     runtime: 4320
     partition: "shared"
-    output: "workflow/logs/adadpterfilt-%j.out"
-    error: "workflow/logs/adapterfilt-%j.err"
   hifiasm:
     nodes: 1
     tasks: 1
@@ -35,26 +35,20 @@ set-resources:
     mem_mb: 400000
     runtime: 20160
     partition: "holy-cow,intermediate"
-    output: "workflow/logs/hifiasm-%j.out"
-    error: "workflow/logs/hifiasm-%j.err"
-  gfatofasta:
+  gfa_to_fasta:
     nodes: 1
     tasks: 1
     cpus_per_task: 1
     mem_mb: 16000
     runtime: 720
     partition: "shared"
-    output: "workflow/logs/gfatofasta-%j.out"
-    error: "workflow/logs/gfatofasta-%j.err"
-  renamecontigs:
+  rename_contigs:
     nodes: 1
     tasks: 1
     cpus_per_task: 1
     mem_mb: 8000
     runtime: 720
     partition: "shared"
-    output: "workflow/logs/rename-%j.out"
-    error: "workflow/logs/rename-%j.err"
   quast:
     nodes: 1
     tasks: 1
@@ -62,6 +56,4 @@ set-resources:
     mem_mb: 16000
     runtime: 720
     partition: "shared"
-    output: "workflow/logs/quast-%j.out"
-    error: "workflow/logs/quast-%j.err"
 

@@ -17,13 +17,13 @@ rule all:
         expand("results/assembly_qc/{sample}.{haplo}.quast/report.txt", haplo=haplotypes, sample=samples)
 
 #WIP: need options for demultiplexing
-rule bam2fastx:
+rule bam2fastq:
     input:
         files = config["reads"].split(" ")
     output:
         "{sample}_combined_reads.fastq.gz"
     conda:
-        "envs/bam2fastx.yaml"
+        "envs/bam2fastq.yaml"
     params:
         prefix = "{sample}_combined_reads"
     shell:
@@ -42,8 +42,6 @@ rule adapterfilt:
         temp(hifi_outdir + "/{sample}.filt.fastq.gz")
     conda:
         "envs/adapter.yaml"
-    threads:
-        resources["adapterfilt"]["threads"]
     shell:
         "cutadapt --discard-trimmed -j {threads} --overlap=35 -b ATCTCTCTCAACAACAACAACGGAGGAGGAGGAAAAGAGAGAGAT -b ATCTCTCTCTTTTCCTCCTCCTCCGTTGTTGTTGTTGAGAGAGAT -o {output} {input}"
 
@@ -65,8 +63,6 @@ rule hifiasm:
         ont = config["use_ont"],
         ontReads = config["ont_reads"],
         outdir = hifi_outdir + "/{sample}"
-    threads: 
-        resources['hifiasm']['threads']
     log:
         "logs/{sample}.hifiasm.out"
     shell: #The output naming format is slightly different in Hifiasm based on mode; this logic deals with that by renaming output
@@ -119,8 +115,6 @@ rule quast:
         "results/assembly_qc/{sample}.{haplo}.quast/report.txt"
     conda:
         "envs/quast.yaml"
-    threads:
-        resources["quast"]["threads"]
     log:
         "logs/{sample}.{haplo}/quast_log/"
     shell:
