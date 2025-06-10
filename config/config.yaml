@@ -2,8 +2,9 @@
 # Variables you need to change
 ##############################
 
-sample: "sample_206_npict"  #Name of the sample to act as base name
-reads: " "  #List of BAM files output from sequencer (include full path). If multiple files, separate by SPACES
+samples:
+  sampleA: path/to/reads
+  sampleB: path/to/reads
 
 #Hifiasm options
 use_hiC: "false"  #Indicate whether using HiC data to aid in with assembly (note, NOT the same as HiC scaffolding!)

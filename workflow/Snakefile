@@ -5,8 +5,25 @@ import glob, os, pathlib
 #Config file
 configfile: "../config/config.yaml"
 
+#Sample sheet mapping smaple IDs to reads files
+# samsheet="../config/sample_sheet.tsv"
+# samdict = {}
+# with open(samsheet) as fin:
+#     for line in fin:
+#         line = line.rstrip()
+#         data = line.split("\t")
+#         #samdict[data[0]] = data[1]
+#         samdict[data[0]] = {'reads' : data[1]}
+
+#Input function to get reads
+def get_reads(wildcards):
+    #Make space separated list of BAM files for given sample
+    # files = samdict[wildcards.sample]['reads'].split(" ")
+    # return files
+    return config["samples"][wildcards.sample]
+
 #Gets info from config file:
-samples = config["sample"]
+samples = config["samples"]
 haplotypes=["p_ctg", "hap1.p_ctg", "hap2.p_ctg"]
 hifi_outdir = config["hifi_outdir"]
 assem_outdir = config["assem_outdir"]
@@ -19,7 +36,9 @@ rule all:
 #WIP: need options for demultiplexing
 rule bam2fastq:
     input:
-        files = config["reads"].split(" ")
+        #files = config["reads"].split(" ")
+        #Call input function
+        get_reads
     output:
         "{sample}_combined_reads.fastq.gz"
     conda:
@@ -28,10 +47,17 @@ rule bam2fastq:
         prefix = "{sample}_combined_reads"
     shell:
         """
-        #bam2fastq -o {params.prefix} {input}
-        samtools merge combined_reads.bam {input}
-        bedtools bamtofastq -i combined_reads.bam -fq {params.prefix}.fastq
-        gzip {params.prefix}.fastq 
+        files={input}
+        file_array=($files)
+
+        if [ "${#file_array[@]}" -eq 1 ]; then
+            bedtools bamtofastq -i {input} -fq {params.prefix}.fastq
+            gzip {params.prefix}.fastq
+        elif [ "${#file_array[@]}" -gt 1 ]; then
+            samtools merge combined_reads.bam {input}
+            bedtools bamtofastq -i combined_reads.bam -fq {params.prefix}.fastq
+            gzip {params.prefix}.fastq
+        fi
         """
 
 
