@@ -3,8 +3,8 @@
 ##############################
 
 samples:
-  sampleA: path/to/reads
-  sampleB: path/to/reads
+  sampleA: ["path/to/reads"]
+  sampleB: ["path/to/reads", "/path/to/reads2"]
 
 #Hifiasm options
 use_hiC: "false"  #Indicate whether using HiC data to aid in with assembly (note, NOT the same as HiC scaffolding!)
