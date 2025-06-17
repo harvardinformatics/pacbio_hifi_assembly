@@ -20,40 +20,40 @@ set-resources:
     cpus_per_task: 1
     mem_mb: 36000
     runtime: 4320
-    partition: "shared"
+    slurm_partition: "shared"
   adapterfilt:
     nodes: 1
     tasks: 1
     cpus_per_task: 4
     mem_mb: 36000
     runtime: 4320
-    partition: "shared"
+    slurm_partition: "shared"
   hifiasm:
     nodes: 1
     tasks: 1
     cpus_per_task: 20
     mem_mb: 400000
     runtime: 20160
-    partition: "holy-cow,intermediate"
+    slurm_partition: "holy-cow,intermediate"
   gfa_to_fasta:
     nodes: 1
     tasks: 1
     cpus_per_task: 1
     mem_mb: 16000
     runtime: 720
-    partition: "shared"
+    slurm_partition: "shared"
   rename_contigs:
     nodes: 1
     tasks: 1
     cpus_per_task: 1
     mem_mb: 8000
     runtime: 720
-    partition: "shared"
+    slurm_partition: "shared"
   quast:
     nodes: 1
     tasks: 1
     cpus_per_task: 4
     mem_mb: 16000
     runtime: 720
-    partition: "shared"
+    slurm_partition: "shared"
 

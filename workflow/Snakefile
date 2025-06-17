@@ -47,15 +47,14 @@ rule bam2fastq:
         prefix = "{sample}_combined_reads"
     shell:
         """
-        files={input}
-        file_array=($files)
+        file_array=({input})
 
-        if [ "${#file_array[@]}" -eq 1 ]; then
+        if [ "${{#file_array[@]}}" -eq 1 ]; then
             bedtools bamtofastq -i {input} -fq {params.prefix}.fastq
             gzip {params.prefix}.fastq
-        elif [ "${#file_array[@]}" -gt 1 ]; then
-            samtools merge combined_reads.bam {input}
-            bedtools bamtofastq -i combined_reads.bam -fq {params.prefix}.fastq
+        elif [ "${{#file_array[@]}}" -gt 1 ]; then
+            samtools merge {params.prefix}_combined_reads.bam {input}
+            bedtools bamtofastq -i {params.prefix}_combined_reads.bam -fq {params.prefix}.fastq
             gzip {params.prefix}.fastq
         fi
         """
