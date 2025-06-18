@@ -34,7 +34,7 @@ set-resources:
     cpus_per_task: 20
     mem_mb: 400000
     runtime: 20160
-    slurm_partition: "holy-cow,intermediate"
+    slurm_partition: "intermediate"
   gfa_to_fasta:
     nodes: 1
     tasks: 1
