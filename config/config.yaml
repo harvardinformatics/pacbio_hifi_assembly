@@ -8,13 +8,13 @@ samples:
 
 ##WIP: need to update these for multiple sample option
 #Hifiasm options
-#use_hiC: "false"  #Indicate whether using HiC data to aid in with assembly (note, NOT the same as HiC scaffolding!)
-#hiC_read1: " "  #If using HiC, include path to first set of reads in pair
-#hiC_read2: " "  ##If using HiC, include path to second set of reads in pair
+use_hiC: "false"  #Indicate whether using HiC data to aid in with assembly (note, NOT the same as HiC scaffolding!)
+hiC_read1: " "  #If using HiC, include path to first set of reads in pair
+hiC_read2: " "  ##If using HiC, include path to second set of reads in pair
 
 #Optional (ultra-long) Nanopore integration
-#use_ont: "false" #Indicate whether have nanopore data
-#ont_reads: " " #If using Nanopore, add path to COMBINED reads as a fastq file (opt. gzipped fastq)
+use_ont: "false" #Indicate whether have nanopore data
+ont_reads: " " #If using Nanopore, add path to COMBINED reads as a fastq file (opt. gzipped fastq)
 
 #Variables you DON'T need to change:
 #Output naming:
