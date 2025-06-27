@@ -27,6 +27,7 @@ samples = config["samples"]
 haplotypes=["p_ctg", "hap1.p_ctg", "hap2.p_ctg"]
 hifi_outdir = config["hifi_outdir"]
 assem_outdir = config["assem_outdir"]
+inter_outdir = config["intermediate_outdir"]
 
 
 rule all:
@@ -40,11 +41,11 @@ rule bam2fastq:
         #Call input function
         get_reads
     output:
-        "{sample}_combined_reads.fastq.gz"
+        inter_outdir + "/{sample}_combined_reads.fastq.gz"
     conda:
         "envs/bam2fastq.yaml"
     params:
-        prefix = "{sample}_combined_reads"
+        prefix = inter_outdir + "/{sample}_combined_reads"
     shell:
         """
         file_array=({input})
@@ -62,7 +63,7 @@ rule bam2fastq:
 
 rule adapterfilt:
     input:
-        "{sample}_combined_reads.fastq.gz"
+        inter_outdir + "/{sample}_combined_reads.fastq.gz"
     output:
         temp(hifi_outdir + "/{sample}.filt.fastq.gz")
     conda:
