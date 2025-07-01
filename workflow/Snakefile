@@ -50,14 +50,20 @@ rule bam2fastq:
         """
         file_array=({input})
 
-        if [ "${{#file_array[@]}}" -eq 1 ]; then
-            bedtools bamtofastq -i {input} -fq {params.prefix}.fastq
-            gzip {params.prefix}.fastq
-        elif [ "${{#file_array[@]}}" -gt 1 ]; then
-            samtools merge {params.prefix}_combined_reads.bam {input}
-            bedtools bamtofastq -i {params.prefix}_combined_reads.bam -fq {params.prefix}.fastq
-            gzip {params.prefix}.fastq
-        fi
+        for file in "${file_array[@]}"; do
+            pbindex $file
+        done
+
+        bam2fastq -o {output} {input}
+
+        # if [ "${{#file_array[@]}}" -eq 1 ]; then
+        #     bedtools bamtofastq -i {input} -fq {params.prefix}.fastq
+        #     gzip {params.prefix}.fastq
+        # elif [ "${{#file_array[@]}}" -gt 1 ]; then
+        #     samtools merge {params.prefix}_combined_reads.bam {input}
+        #     bedtools bamtofastq -i {params.prefix}_combined_reads.bam -fq {params.prefix}.fastq
+        #     gzip {params.prefix}.fastq
+        # fi
         """
 
 

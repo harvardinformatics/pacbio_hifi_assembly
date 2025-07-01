@@ -3,5 +3,4 @@ channels:
   - defaults
   - conda-forge
 dependencies:
-  - bedtools
-  - samtools
+  - pbtk
