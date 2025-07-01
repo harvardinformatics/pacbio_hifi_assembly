@@ -54,7 +54,7 @@ rule bam2fastq:
             pbindex $file
         done
 
-        bam2fastq -o {output} {input}
+        bam2fastq -o {params.prefix} {input}
 
         # if [ "${{#file_array[@]}}" -eq 1 ]; then
         #     bedtools bamtofastq -i {input} -fq {params.prefix}.fastq
