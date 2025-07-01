@@ -50,7 +50,7 @@ rule bam2fastq:
         """
         file_array=({input})
 
-        for file in "${file_array[@]}"; do
+        for file in "${{file_array[@]}}"; do
             pbindex $file
         done
 
