@@ -44,6 +44,13 @@ def get_assem_params(wildcards):
 
     return " ".join(params)
 
+def checkONT(wildcards):
+    #If have using ONT reads
+    if config["samples"][wildcards.sample]["nanopore"]:
+        return f"true"
+    else:
+        return f"false"   
+
 #Fxn to handle different named output from hifiasm so can standardize naming
 def checkHiC(wildcards):
     #If have HiC reads
@@ -59,9 +66,9 @@ rule all:
         expand("results/assembly_qc/{sample}.{haplo}.quast/report.txt", haplo=haplotypes, sample=samples)
 
 #WIP: what do for ONT BAM vs fastq???
+#WIP: this is clumsy as-is...if have ONT, dont need environment, and the zcat is pointless if only 1 file...
 rule bam2fastq:
     input:
-        #files = config["reads"].split(" ")
         #Call input function
         get_reads
     output:
@@ -69,16 +76,21 @@ rule bam2fastq:
     conda:
         "envs/bam2fastq.yaml"
     params:
-        prefix = inter_outdir + "/{sample}_combined_reads"
+        prefix = inter_outdir + "/{sample}_combined_reads",
+        isONT = checkONT
     shell:
         """
         file_array=({input})
 
-        for file in "${{file_array[@]}}"; do
-            pbindex $file
-        done
+        if [[ "{params.isONT}" == "true" ]]; then
+            zcat "${{file_array[@]}}" | gzip > {output} 
+        elif [[ "{params.isONT}" == "false" ]]; then
+            for file in "${{file_array[@]}}"; do
+                pbindex $file
+            done
 
-        bam2fastq -o {params.prefix} {input}
+            bam2fastq -o {params.prefix} {input}
+        fi
         """
 
 # WIP: need more sophsiticated method to trim reads that works for both ONT and PB...
@@ -106,18 +118,18 @@ rule hifiasm:
     params:
         outdir = hifi_outdir + "/{sample}",
         assemOptions = get_assem_params,
-        hic = checkHiC
+        hasHic = checkHiC
     log:
         "logs/{sample}.hifiasm.out"
-    shell: #The output naming format is slightly different in Hifiasm based if have HiC data; this logic deals with that by renaming output to standard
+    shell: #The output naming format is slightly different in Hifiasm based if have HiC data; this logic deals with that by renaming output to a standard
         """
         hifiasm -t {threads} {params.assemOptions} -o {params.outdir} {input}
 
-        if [[ "{params.hic}" == "true" ]]; then
+        if [[ "{params.hasHic}" == "true" ]]; then
             mv {params.outdir}.hic.p_ctg.gfa {output.pasm}
             mv {params.outdir}.hic.hap1.p_ctg.gfa {output.hap1asm}
             mv {params.outdir}.hic.hap2.p_ctg.gfa {output.hap2asm}
-        else
+        elif [[ "{params.hasHic}" == "false" ]]; then
             mv {params.outdir}.bp.p_ctg.gfa {output.pasm}
             mv {params.outdir}.bp.hap1.p_ctg.gfa {output.hap1asm}
             mv {params.outdir}.bp.hap2.p_ctg.gfa {output.hap2asm}
