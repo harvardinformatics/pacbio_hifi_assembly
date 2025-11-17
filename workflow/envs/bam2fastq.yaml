@@ -1,6 +1,5 @@
 channels:
   - bioconda
-  - defaults
   - conda-forge
 dependencies:
   - pbtk

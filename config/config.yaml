@@ -2,19 +2,23 @@
 # Variables you need to change
 ##############################
 
+#Change "sampleA", "sampleB" to the output naming prefix for your assemblies (e.g. species name)
+#For the "hifi", "nanopore" etc. fields, put path to reads as comma separated list
+#"hifi" XOR "nanopore"
+#If using HiC, must have both hic1 and hic2
+#If don't have relevant data types, REMOVE that line 
 samples:
-  sampleA: ["path/to/reads"]
-  sampleB: ["path/to/reads", "/path/to/reads2"]
+  sampleA:
+    hifi: ["path/to/reads.bam", "/path/to/reads2.bam"]
+    ultralong:
+    hic1:
+    hic2:
+  sampleB:
+    nanopore: ["path/to/reads.bam", "/path/to/reads2.bam"]
+    ultralong:
+    hic1:
+    hic2:
 
-##WIP: need to update these for multiple sample option
-#Hifiasm options
-use_hiC: "false"  #Indicate whether using HiC data to aid in with assembly (note, NOT the same as HiC scaffolding!)
-hiC_read1: " "  #If using HiC, include path to first set of reads in pair
-hiC_read2: " "  ##If using HiC, include path to second set of reads in pair
-
-#Optional (ultra-long) Nanopore integration
-use_ont: "false" #Indicate whether have nanopore data
-ont_reads: " " #If using Nanopore, add path to COMBINED reads as a fastq file (opt. gzipped fastq)
 
 #Variables you DON'T need to change:
 #Output naming:

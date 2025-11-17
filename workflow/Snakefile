@@ -5,23 +5,6 @@ import glob, os, pathlib
 #Config file
 configfile: "../config/config.yaml"
 
-#Sample sheet mapping smaple IDs to reads files
-# samsheet="../config/sample_sheet.tsv"
-# samdict = {}
-# with open(samsheet) as fin:
-#     for line in fin:
-#         line = line.rstrip()
-#         data = line.split("\t")
-#         #samdict[data[0]] = data[1]
-#         samdict[data[0]] = {'reads' : data[1]}
-
-#Input function to get reads
-def get_reads(wildcards):
-    #Make space separated list of BAM files for given sample
-    # files = samdict[wildcards.sample]['reads'].split(" ")
-    # return files
-    return config["samples"][wildcards.sample]
-
 #Gets info from config file:
 samples = config["samples"]
 haplotypes=["p_ctg", "hap1.p_ctg", "hap2.p_ctg"]
@@ -29,12 +12,53 @@ hifi_outdir = config["hifi_outdir"]
 assem_outdir = config["assem_outdir"]
 inter_outdir = config["intermediate_outdir"]
 
+# INPUT FUNCTIONS ######################################
+
+#Input function to get reads
+def get_reads(wildcards):
+    #if have hifi reads (i.e. have "hifi" key in config dict)
+    if 'hifi' in config["samples"][wildcards.sample]:
+        return config["samples"][wildcards.sample]["hifi"]
+    #if have ONT reads
+    elif 'nanopore' in config["samples"][wildcards.sample]:
+        return config["samples"][wildcards.sample]["nanopore"]
+   # return config["samples"][wildcards.sample]
+
+#Fxn to get assembly parameters for assembly based on available data
+def get_assem_params(wildcards):
+    samp = config["samples"][wildcards.sample]
+    #List of parameters to pass
+    params = []
+    #Hifi-only, don't need additional params
+    #ONT assembly, need to add --ont flag:
+    if 'nanopore' in samp:
+        params.append("--ont")
+    #HiC data:
+    if 'hic1' in samp:
+        params.append(f"--h1 {samp["hic1"]}")
+    if 'hic2' in samp:
+        params.append(f"--h2 {samp["hic2"]}")
+    #Ultralong data:
+    if 'ultralong' in samp:
+        params.append(f"--ul {samp["ultralong"]}")   
+
+    return " ".join(params)
+
+#Fxn to handle different named output from hifiasm so can standardize naming
+def checkHiC(wildcards):
+    #If have HiC reads
+    if config["samples"][wildcards.sample]["hic1"]:
+        return f"true"
+    else:
+        return f"false"
+
+###########################################################
 
 rule all:
     input:
         expand("results/assembly_qc/{sample}.{haplo}.quast/report.txt", haplo=haplotypes, sample=samples)
 
-#WIP: need options for demultiplexing
+#WIP: what do for ONT BAM vs fastq???
 rule bam2fastq:
     input:
         #files = config["reads"].split(" ")
@@ -55,33 +79,24 @@ rule bam2fastq:
         done
 
         bam2fastq -o {params.prefix} {input}
-
-        # if [ "${{#file_array[@]}}" -eq 1 ]; then
-        #     bedtools bamtofastq -i {input} -fq {params.prefix}.fastq
-        #     gzip {params.prefix}.fastq
-        # elif [ "${{#file_array[@]}}" -gt 1 ]; then
-        #     samtools merge {params.prefix}_combined_reads.bam {input}
-        #     bedtools bamtofastq -i {params.prefix}_combined_reads.bam -fq {params.prefix}.fastq
-        #     gzip {params.prefix}.fastq
-        # fi
         """
 
+# WIP: need more sophsiticated method to trim reads that works for both ONT and PB...
+#WIP: maybe lima for PB, but porechop abandonware for ONT...
+# rule adapterfilt:
+#     input:
+#         inter_outdir + "/{sample}_combined_reads.fastq.gz"
+#     output:
+#         temp(hifi_outdir + "/{sample}.filt.fastq.gz")
+#     conda:
+#         "envs/adapter.yaml"
+#     shell:
+#         "cutadapt --discard-trimmed -j {threads} --overlap=35 -b ATCTCTCTCAACAACAACAACGGAGGAGGAGGAAAAGAGAGAGAT -b ATCTCTCTCTTTTCCTCCTCCTCCGTTGTTGTTGTTGAGAGAGAT -o {output} {input}"
 
-rule adapterfilt:
-    input:
-        inter_outdir + "/{sample}_combined_reads.fastq.gz"
-    output:
-        temp(hifi_outdir + "/{sample}.filt.fastq.gz")
-    conda:
-        "envs/adapter.yaml"
-    shell:
-        "cutadapt --discard-trimmed -j {threads} --overlap=35 -b ATCTCTCTCAACAACAACAACGGAGGAGGAGGAAAAGAGAGAGAT -b ATCTCTCTCTTTTCCTCCTCCTCCGTTGTTGTTGTTGAGAGAGAT -o {output} {input}"
 
-#WIP: how to handle if want diploid assembly, or primary only? Separate rules?? Flags??
-#Three options: hifi-only (partially phased or primary/alternate), HiC integrated, trio-binning (don't include, involves lots of steps)
 rule hifiasm:
     input:
-        hifi_outdir + "/{sample}.filt.fastq.gz"
+        inter_outdir + "/{sample}_combined_reads.fastq.gz"
     output:
         pasm = hifi_outdir + "/{sample}.p_ctg.gfa",
         hap1asm = hifi_outdir + "/{sample}.hap1.p_ctg.gfa",
@@ -89,33 +104,20 @@ rule hifiasm:
     conda:
         "envs/hifiasm.yaml"
     params:
-        hic = config["use_hiC"],
-        hic1 = config["hiC_read1"],
-        hic2 = config["hiC_read2"],
-        ont = config["use_ont"],
-        ontReads = config["ont_reads"],
-        outdir = hifi_outdir + "/{sample}"
+        outdir = hifi_outdir + "/{sample}",
+        assemOptions = get_assem_params,
+        hic = checkHiC
     log:
         "logs/{sample}.hifiasm.out"
-    shell: #The output naming format is slightly different in Hifiasm based on mode; this logic deals with that by renaming output
+    shell: #The output naming format is slightly different in Hifiasm based if have HiC data; this logic deals with that by renaming output to standard
         """
-        if [[ "{params.hic}" == "true" ]] && [[ "{params.ont}" == "true" ]]; then
-            hifiasm -t {threads} --ul {params.ontReads} --h1 {params.hic1} --h2 {params.hic2} -o {params.outdir} {input} 2> {log}
+        hifiasm -t {threads} {params.assemOptions} -o {params.outdir} {input}
+
+        if [[ "{params.hic}" == "true" ]]; then
             mv {params.outdir}.hic.p_ctg.gfa {output.pasm}
             mv {params.outdir}.hic.hap1.p_ctg.gfa {output.hap1asm}
             mv {params.outdir}.hic.hap2.p_ctg.gfa {output.hap2asm}
-        elif [[ "{params.hic}" == "true" ]] && [[ "{params.ont}" == "false" ]]; then
-            hifiasm -t {threads} --h1 {params.hic1} --h2 {params.hic2} -o {params.outdir} {input} 2> {log}
-            mv {params.outdir}.hic.p_ctg.gfa {output.pasm}
-            mv {params.outdir}.hic.hap1.p_ctg.gfa {output.hap1asm}
-            mv {params.outdir}.hic.hap2.p_ctg.gfa {output.hap2asm}
-        elif [[ "{params.hic}" == "false" ]] && [[ "{params.ont}" == "true" ]]; then
-            hifiasm -t {threads} --ul {params.ontReads} -o {params.outdir} {input} 2> {log}
-            mv {params.outdir}.bp.p_ctg.gfa {output.pasm}
-            mv {params.outdir}.bp.hap1.p_ctg.gfa {output.hap1asm}
-            mv {params.outdir}.bp.hap2.p_ctg.gfa {output.hap2asm}
         else
-            hifiasm -t {threads} -o {params.outdir} {input} 2> {log}
             mv {params.outdir}.bp.p_ctg.gfa {output.pasm}
             mv {params.outdir}.bp.hap1.p_ctg.gfa {output.hap1asm}
             mv {params.outdir}.bp.hap2.p_ctg.gfa {output.hap2asm}
@@ -151,3 +153,7 @@ rule quast:
         "logs/{sample}.{haplo}/quast_log/"
     shell:
         "quast.py -t {threads} --eukaryote -o {params.prefix} {input} &> {log}"
+
+#WIP: add in Meryl + Merqury for QC
+
+#WIP: add in compleasm/BUSCO for QC (default: eukaryota db?)
