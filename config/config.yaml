@@ -10,11 +10,13 @@
 samples:
   sampleA:
     hifi: ["path/to/reads.bam", "/path/to/reads2.bam"]
+    readFileType: "bam|fastq"
     ultralong:
     hic1:
     hic2:
   sampleB:
     nanopore: ["path/to/reads.bam", "/path/to/reads2.bam"]
+    readFileType:
     ultralong:
     hic1:
     hic2:

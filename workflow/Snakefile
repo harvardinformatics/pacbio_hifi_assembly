@@ -24,40 +24,38 @@ def get_reads(wildcards):
         return config["samples"][wildcards.sample]["nanopore"]
    # return config["samples"][wildcards.sample]
 
-#Fxn to get assembly parameters for assembly based on available data
+#Fxn to get reads for hifiasm step, based on whether originally had BAM files or fastq files
+def get_assem_input(wildcards):
+    if config["samples"][wildcards.sample]["readFileType"] == "bam":
+        return f"{inter_outdir}/{wildcards.sample}_combined_reads.fromBam.fastq.gz"
+    elif config["samples"][wildcards.sample]["readFileType"] == "fastq":
+        return f"{inter_outdir}/{wildcards.sample}_combined_reads.fastq.gz"
+
+#Fxn to get assembly parameters for hifiasm step, based on available data
 def get_assem_params(wildcards):
     samp = config["samples"][wildcards.sample]
-    #List of parameters to pass
     params = []
-    #Hifi-only, don't need additional params
-    #ONT assembly, need to add --ont flag:
-    if 'nanopore' in samp:
+    # ONT assembly, need to add --ont flag
+    if samp.get("nanopore"):
         params.append("--ont")
-    #HiC data:
-    if 'hic1' in samp:
-        params.append(f"--h1 {samp["hic1"]}")
-    if 'hic2' in samp:
-        params.append(f"--h2 {samp["hic2"]}")
-    #Ultralong data:
-    if 'ultralong' in samp:
-        params.append(f"--ul {samp["ultralong"]}")   
-
+    # HiC data
+    if samp.get("hic1"):
+        params.append(f'--h1 {samp["hic1"]}')
+    if samp.get("hic2"):
+        params.append(f'--h2 {samp["hic2"]}')
+    # Ultralong data
+    if samp.get("ultralong"):
+        params.append(f'--ul {samp["ultralong"]}')
     return " ".join(params)
-
-def checkONT(wildcards):
-    #If have using ONT reads
-    if config["samples"][wildcards.sample]["nanopore"]:
-        return f"true"
-    else:
-        return f"false"   
 
 #Fxn to handle different named output from hifiasm so can standardize naming
 def checkHiC(wildcards):
+    sample_info = config["samples"][wildcards.sample]
     #If have HiC reads
-    if config["samples"][wildcards.sample]["hic1"]:
-        return f"true"
+    if sample_info.get("hic1"):
+        return "true"
     else:
-        return f"false"
+        return "false"
 
 def get_lineage(wildcards):
     if config["busco"][wildcards.sample]=="auto":
@@ -70,34 +68,42 @@ def get_lineage(wildcards):
 
 rule all:
     input:
-        expand("results/assembly_qc/{sample}.{haplo}.quast/report.txt", haplo=haplotypes, sample=samples)
+        expand("results/assembly_qc/{sample}.{haplo}.quast/report.txt", haplo=haplotypes, sample=samples),
+        expand("results/assembly_qc/{sample}.p_ctg.compleasm/summary.txt", sample=samples)
 
-#WIP: what do for ONT BAM vs fastq???
-#WIP: this is clumsy as-is...if have ONT, dont need environment, and the zcat is pointless if only 1 file...
+
+#Used if reads in BAM format
 rule bam2fastq:
     input:
-        #Call input function
+        #Call input function; returns a list of files
         get_reads
     output:
-        inter_outdir + "/{sample}_combined_reads.fastq.gz"
+        inter_outdir + "/{sample}_combined_reads.fromBam.fastq.gz"
     conda:
         "envs/bam2fastq.yaml"
     params:
-        prefix = inter_outdir + "/{sample}_combined_reads",
-        isONT = checkONT
+        prefix = inter_outdir + "/{sample}_combined_reads"
     shell:
         """
         file_array=({input})
+        for file in "${{file_array[@]}}"; do
+            pbindex $file
+        done
 
-        if [[ "{params.isONT}" == "true" ]]; then
-            zcat "${{file_array[@]}}" | gzip > {output} 
-        elif [[ "{params.isONT}" == "false" ]]; then
-            for file in "${{file_array[@]}}"; do
-                pbindex $file
-            done
+        bam2fastq -o {params.prefix} {input}
+        """
 
-            bam2fastq -o {params.prefix} {input}
-        fi
+#Used if reads are in fastq format
+rule combineFastq:
+    input:
+        #Call input function; returns a list of files
+        get_reads
+    output:
+        inter_outdir + "/{sample}_combined_reads.fastq.gz"
+    shell:
+        """
+        file_array=({input})
+        zcat "${{file_array[@]}}" | gzip > {output}
         """
 
 # WIP: need more sophsiticated method to trim reads that works for both ONT and PB...
@@ -115,7 +121,7 @@ rule bam2fastq:
 
 rule hifiasm:
     input:
-        inter_outdir + "/{sample}_combined_reads.fastq.gz"
+        get_assem_input
     output:
         pasm = hifi_outdir + "/{sample}.p_ctg.gfa",
         hap1asm = hifi_outdir + "/{sample}.hap1.p_ctg.gfa",
