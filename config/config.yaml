@@ -19,6 +19,12 @@ samples:
     hic1:
     hic2:
 
+#Optional: for running BUSCO using compleasm, specify a lineage (defaults to autolineage)
+#Note: sample IDs must match the IDs above!
+busco:
+  sampleA: "auto"
+  sampleB: "auto"
+
 
 #Variables you DON'T need to change:
 #Output naming:

@@ -59,6 +59,13 @@ def checkHiC(wildcards):
     else:
         return f"false"
 
+def get_lineage(wildcards):
+    if config["busco"][wildcards.sample]=="auto":
+        return "--autolineage"
+    else:
+        lineage = config["busco"][wildcards.sample]
+        return f"-l {lineage}"
+
 ###########################################################
 
 rule all:
@@ -169,3 +176,17 @@ rule quast:
 #WIP: add in Meryl + Merqury for QC
 
 #WIP: add in compleasm/BUSCO for QC (default: eukaryota db?)
+rule busco:
+    input:
+        assem_outdir + "/{sample}.p_ctg.fa"
+    output:
+        "results/assembly_qc/{sample}.p_ctg.compleasm/summary.txt"
+    conda:
+        "envs/compleasm.yaml"
+    log:
+        "logs/{sample}_compleasm.out"
+    params:
+        lineage = get_lineage
+        prefix="results/assembly_qc/{sample}.p_ctg.compleasm"
+    shell:
+        "compleasm run -a {input} -o {params.prefix} -t {threads} {params.lineage}"
