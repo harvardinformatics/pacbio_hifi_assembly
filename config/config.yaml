@@ -3,7 +3,7 @@
 ##############################
 
 #Change "sampleA", "sampleB" to the output naming prefix for your assemblies (e.g. species name)
-#For the "hifi", "nanopore" etc. fields, put path to reads as comma separated list
+#For the "hifi", "nanopore" etc. fields, if multiple read files put path to reads as comma separated list
 #"hifi" XOR "nanopore"
 #If using HiC, must have both hic1 and hic2
 #If don't have relevant data types, REMOVE that line 
@@ -11,9 +11,9 @@ samples:
   sampleA:
     hifi: ["path/to/reads.bam", "/path/to/reads2.bam"]
     readFileType: "bam|fastq"
-    ultralong:
-    hic1:
-    hic2:
+    ultralong: ["path/to/reads.fastq"]
+    hic1: ["path/to/reads_1.fastq"]
+    hic2: ["path/to/reads_2.fastq"]
   sampleB:
     nanopore: ["path/to/reads.bam", "/path/to/reads2.bam"]
     readFileType:
