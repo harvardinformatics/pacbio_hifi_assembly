@@ -13,6 +13,8 @@ You will also need snakemake installed to run the pipeline. The easiest way to i
 ## Configuring the pipeline  
 In the repo directory, there is a file in the `config/` subdirectory called `config.yaml` that you will need to modify to point towards your data. This configuration file contains a series of 'key:value' mappings (similar to a Python dictionary) 
 
+### Installing snakemake
+
 ### Hifi-only assembly
 For a basic assembly using just PacBio Hifi reads, your configuration should look like this: 
 

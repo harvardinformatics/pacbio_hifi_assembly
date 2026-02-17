@@ -192,7 +192,7 @@ rule busco:
     log:
         "logs/{sample}_compleasm.out"
     params:
-        lineage = get_lineage
+        lineage = get_lineage,
         prefix="results/assembly_qc/{sample}.p_ctg.compleasm"
     shell:
         "compleasm run -a {input} -o {params.prefix} -t {threads} {params.lineage}"
