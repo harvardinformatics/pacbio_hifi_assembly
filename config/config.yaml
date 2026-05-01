@@ -21,11 +21,11 @@ samples:
     hic1: "path/to/reads_1.fastq"
     hic2: "path/to/reads_2.fastq"
 
-#Optional: for running BUSCO using compleasm, specify a lineage (defaults to autolineage)
+#Optional: for running BUSCO using compleasm, specify a lineage (defaults to eukaryota)
 #Note: sample IDs must match the IDs above!
 busco:
-  sampleA: "auto"
-  sampleB: "auto"
+  sampleA: "eukaryota"
+  sampleB: "eukaryota"
 
 
 #Variables you DON'T need to change:
