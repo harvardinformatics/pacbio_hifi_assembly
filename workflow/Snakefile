@@ -231,7 +231,7 @@ rule hifiasm:
     shell: #The output naming format is slightly different in Hifiasm based if have HiC data; this logic deals with that by renaming output to a standard
         """
         mkdir -p $(dirname {log})
-        hifiasm -t {threads} {params.assemOptions} -o {params.outdir} {input}
+        hifiasm -t {threads} {params.assemOptions} -o {params.outdir} {input} &> {log}
 
         if [[ "{params.hasHic}" == "true" ]]; then
             mv {params.outdir}.hic.p_ctg.gfa {output.pasm}
@@ -331,5 +331,5 @@ rule busco:
     shell:
         """
         mkdir -p $(dirname {log})
-        compleasm run -a {input} -o {params.prefix} -t {threads} {params.lineage}
+        compleasm run -a {input} -o {params.prefix} -t {threads} {params.lineage} &> {log}
         """
