@@ -1,0 +1,25 @@
+##############################
+# Variables you need to change
+##############################
+
+#Change "sampleA", "sampleB" to the output naming prefix for your assemblies (e.g. species name)
+#For the "hifi", "nanopore" etc. fields, if multiple read files put path to reads as comma separated list
+#"hifi" XOR "nanopore"
+#If using HiC, must have both hic1 and hic2
+#If don't have relevant data types, REMOVE that line
+samples:
+  bingus:
+    hifi: ["/n/holylfs05/LABS/informatics/Lab/projects/dkhost/assembly_qc_tutorial/misassem_detect/test_data/read_test.fastq.gz"]
+    readFileType: "fastq"
+
+#Optional: for running BUSCO using compleasm, specify a lineage (defaults to eukaryota)
+#Note: sample IDs must match the IDs above!
+busco:
+  bingus: "eukaryota"
+
+
+#Variables you DON'T need to change:
+#Output naming:
+intermediate_outdir: "results/intermediate_files"
+hifi_outdir: "results/hifiasm_output_RAW"
+assem_outdir: "results/assembly"

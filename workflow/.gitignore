@@ -1,0 +1,6 @@
+.snakemake/
+results/
+logs/
+*.html
+*.ipynb_checkpoints
+*.out
