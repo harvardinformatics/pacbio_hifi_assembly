@@ -152,8 +152,7 @@ rule all:
     input:
         expand("results/assembly_qc/{sample}.{haplo}.quast/report.txt", haplo=haplotypes, sample=samples),
         expand("results/assembly_qc/{sample}.p_ctg.compleasm/summary.txt", sample=samples),
-        expand("results/assembly_qc/{sample}.p_ctg.merqury/{sample}.p_ctg.qv", sample=samples),
-        expand("results/assembly_qc/{sample}.p_ctg.merqury/{sample}.p_ctg.completeness.stats", sample=samples)
+        expand("results/assembly_qc/{sample}.p_ctg.merqury", sample=samples)
 
 
 #Used if reads in BAM format
@@ -299,20 +298,16 @@ rule merqury:
         db="results/assembly_qc/{sample}.reads.k31.meryl",
         asm=assem_outdir + "/{sample}.p_ctg.fa"
     output:
-        qv="results/assembly_qc/{sample}.p_ctg.merqury/{sample}.p_ctg.qv",
-        completeness="results/assembly_qc/{sample}.p_ctg.merqury/{sample}.p_ctg.completeness.stats"
+        directory("results/assembly_qc/{sample}.p_ctg.merqury")
     conda:
         "envs/merqury.yaml"
     params:
-        outdir="results/assembly_qc/{sample}.p_ctg.merqury",
-        prefix="results/assembly_qc/{sample}.p_ctg.merqury/{sample}.p_ctg"
-    log:
-        "logs/{sample}.merqury.out"
+        prefix="merqury_{sample}.p_ctg"
     shell:
         """
-        mkdir -p {params.outdir}
-        mkdir -p $(dirname {log})
-        merqury.sh {input.db} {input.asm} {params.prefix} &> {log}
+        mkdir -p {output}
+        merqury.sh {input.db} {input.asm} {params.prefix}
+        mv merqury_* {output}
         """
 
 #Add in compleasm/BUSCO for QC (default: eukaryota db)

@@ -35,9 +35,9 @@ set-resources:
   hifiasm:
     nodes: 1
     tasks: 1
-    cpus_per_task: 20
-    mem_mb: 400000
-    runtime: "14d"
+    cpus_per_task: 4
+    mem_mb: 100000
+    runtime: "1d"
   gfa_to_fasta:
     nodes: 1
     tasks: 1

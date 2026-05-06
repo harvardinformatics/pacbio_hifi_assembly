@@ -1,13 +1,6 @@
 #!/bin/bash
 set -euo pipefail
 
-if [[ -n "${SLURM_JOB_ID:-}" ]]; then
-    echo "This launcher should be run directly on a login node, not with sbatch." >&2
-    echo "Run: bash workflow/run_pipe.sh" >&2
-    echo "The Snakemake SLURM executor will submit the rule jobs to the cluster." >&2
-    exit 1
-fi
-
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
 
