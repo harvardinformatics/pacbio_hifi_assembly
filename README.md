@@ -84,7 +84,7 @@ Resources are defined in the `profile/slurm/config.yaml` file. The only line you
 
 
 ## Running the pipeline  
-From the main directory, make sure you are in the `workflow/` subdirectory, which contains the `Snakefile` that determines the order in which the pipeline runs. Before you run the pipeline for real, it can be useful to first do a "dry run" to make sure the pipeline is configured properly and all the files are accessible. 
+From the main directory, navigate into the `workflow/` subdirectory, which contains the `Snakefile` that determines the order in which the pipeline runs. Before you run the pipeline for real, it can be useful to first do a "dry run" to make sure the pipeline is configured properly and all the files are accessible. 
 
 (NOTE: if you created your own version of the `config/config.yaml` file, be sure to change the `--configfile` parameter to point towards the correct location of the YAML file)
 
@@ -92,27 +92,48 @@ From the main directory, make sure you are in the `workflow/` subdirectory, whic
 
 If this works, you should see a table summarizing number of jobs that will be submitted along with some text saying "This was a dry-run." If it worked, you are good to submit it to the cluster.
 
-For running the assembly on the cluster, here is an example SLURM file to run from within the `workflow` directory. 
+For running the assembly on the cluster, snakemake will submit a "head" or "parent" job that coordinates the submission of all the "child" sub-jobs (i.e. each step of the pipeline). This parent job does not use much computational resources but it does need to run for the entire run time of the pipeline, so we will run the parent job on the main login node and it will submit the child jobs to the appropriate partitions (using the auto partition selector to choose).
+
+To make it so the parent job does not end as soon as we log out, we will use the `screen` terminal multiplexer program to let snakemake run in the background. (Note: other terminal multiplexers e.g. `tmux` work as well)
+
+Log onto Cannon, then start a `screen` session like so:
+
+```
+screen -S snakemake_hifiasm
+```
+
+In the `workflow/` directory there is an example shell script to run the pipeline called `run_pipe.sh` (contents below). Within our `screen` session run the submission script by entering:
+
+```
+sh run_pipe.sh &> pipe.out &
+```
+
+You can now detach from the `screen` session (press `Ctrl + A` then `D`) and log out and the parent job will continue running in the background! Keep an eye on the pipeline progress by checking the `pipe.out` file and/or the files in the `logs/` directory.
+
+
+### Example shell submission script
 
 ```
 #!/bin/bash
+set -euo pipefail
 
-#SBATCH -N 1
-#SBATCH -t 7-00:00:00
-#SBATCH --mem 16G
-#SBATCH -n 1
-#SBATCH --partition intermediate
-#SBATCH -J snakemake
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "$SCRIPT_DIR"
 
 # Activate python and your previously installed snakemake conda environment
-module load python
-conda activate snakemake
+source /n/holylfs05/LABS/informatics/Users/dkhost/mamba/bin/activate snakemake
 
 # Set env variable with path to the Cannon snakemake config for auto partition selection
 SMK_PART_CFG="/n/holylfs05/LABS/informatics/Everyone/internal-share/cannon-snakemake-cfg/cannon-snakemake.yml"
 
-# Run pipeline using desired resources set in ../profile/slurm and sample info in ../config/config.yaml
-snakemake --use-conda --rerun-incomplete --slurm-partition-config $SMK_PART_CFG --workflow-profile ../profiles/slurm --configfile ../config/config.yaml -s Snakefile 
+# Run pipeline using desired resources set in ../profiles/slurm and sample info in ../config/config_test.yaml
+snakemake \
+    --use-conda \
+    --rerun-incomplete \
+    --latency-wait 60 \
+    --slurm-partition-config "$SMK_PART_CFG" \
+    --workflow-profile ../profiles/slurm \
+    --configfile ../config/config_test.yaml \
+    -s Snakefile \
+    "$@"
 ```  
-
-This script will submit a "head" job that runs for the entire length of the pipeline and coordinates submission of each step of the pipeline as individual SLURM jobs. If successful, you should see a subdirectory `workflow/results/` that contains the finished assembly and QC stats!  
