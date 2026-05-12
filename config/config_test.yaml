@@ -6,26 +6,16 @@
 #For the "hifi", "nanopore" etc. fields, if multiple read files put path to reads as comma separated list
 #"hifi" XOR "nanopore"
 #If using HiC, must have both hic1 and hic2
-#If don't have relevant data types, REMOVE that line 
+#If don't have relevant data types, REMOVE that line
 samples:
-  sampleA:
-    hifi: ["path/to/reads.bam", "/path/to/reads2.bam"]
-    readFileType: "bam|fastq"
-    ultralong: "path/to/reads.fastq"
-    hic1: "path/to/reads_1.fastq"
-    hic2: "path/to/reads_2.fastq"
-  sampleB:
-    nanopore: ["path/to/reads.bam", "/path/to/reads2.bam"]
-    readFileType: "bam|fastq"
-    ultralong: "path/to/reads.fastq"
-    hic1: "path/to/reads_1.fastq"
-    hic2: "path/to/reads_2.fastq"
+  bingus:
+    hifi: ["/n/holylfs05/LABS/informatics/Lab/projects/dkhost/assembly_qc_tutorial/misassem_detect/test_data/read_test.fastq.gz"]
+    readFileType: "fastq"
 
 #Optional: for running BUSCO using compleasm, specify a lineage (defaults to eukaryota)
 #Note: sample IDs must match the IDs above!
 busco:
-  sampleA: "eukaryota"
-  sampleB: "eukaryota"
+  bingus: "eukaryota"
 
 
 #Variables you DON'T need to change:

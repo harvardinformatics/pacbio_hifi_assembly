@@ -1,87 +1,220 @@
-import yaml
-import glob, os, pathlib
+from snakemake.exceptions import WorkflowError
 
 
 #Config file
-configfile: "../config/config.yaml"
-
-#Sample sheet mapping smaple IDs to reads files
-# samsheet="../config/sample_sheet.tsv"
-# samdict = {}
-# with open(samsheet) as fin:
-#     for line in fin:
-#         line = line.rstrip()
-#         data = line.split("\t")
-#         #samdict[data[0]] = data[1]
-#         samdict[data[0]] = {'reads' : data[1]}
-
-#Input function to get reads
-def get_reads(wildcards):
-    #Make space separated list of BAM files for given sample
-    # files = samdict[wildcards.sample]['reads'].split(" ")
-    # return files
-    return config["samples"][wildcards.sample]
+#configfile: "../config/config.yaml"
 
 #Gets info from config file:
-samples = config["samples"]
 haplotypes=["p_ctg", "hap1.p_ctg", "hap2.p_ctg"]
+valid_read_types = {"bam", "fastq"}
+
+
+def normalize_read_list(value, sample, field_name):
+    if isinstance(value, str):
+        return [value]
+    if isinstance(value, list) and value and all(isinstance(item, str) for item in value):
+        return value
+    raise WorkflowError(
+        f'Sample "{sample}" field "{field_name}" must be a non-empty string or list of strings.'
+    )
+
+
+def validate_optional_string(sample, sample_info, field_name):
+    if field_name in sample_info and not isinstance(sample_info[field_name], str):
+        raise WorkflowError(
+            f'Sample "{sample}" field "{field_name}" must be a string path.'
+        )
+
+
+def validate_config():
+    if not isinstance(config.get("samples"), dict) or not config["samples"]:
+        raise WorkflowError('Config must define a non-empty "samples" mapping.')
+
+    for key in ("hifi_outdir", "assem_outdir", "intermediate_outdir"):
+        if not isinstance(config.get(key), str) or not config[key]:
+            raise WorkflowError(f'Config must define "{key}" as a non-empty string.')
+
+    busco_cfg = config.get("busco", {})
+    if busco_cfg is not None and not isinstance(busco_cfg, dict):
+        raise WorkflowError('Config field "busco" must be a mapping when provided.')
+
+    for sample, sample_info in config["samples"].items():
+        if not isinstance(sample_info, dict):
+            raise WorkflowError(f'Sample "{sample}" must map to a dictionary of settings.')
+
+        has_hifi = "hifi" in sample_info
+        has_nanopore = "nanopore" in sample_info
+        if has_hifi == has_nanopore:
+            raise WorkflowError(
+                f'Sample "{sample}" must define exactly one of "hifi" or "nanopore".'
+            )
+
+        read_type = sample_info.get("readFileType")
+        if read_type not in valid_read_types:
+            raise WorkflowError(
+                f'Sample "{sample}" must set readFileType to one of {sorted(valid_read_types)}.'
+            )
+
+        if has_hifi:
+            normalize_read_list(sample_info["hifi"], sample, "hifi")
+        if has_nanopore:
+            normalize_read_list(sample_info["nanopore"], sample, "nanopore")
+
+        has_hic1 = "hic1" in sample_info
+        has_hic2 = "hic2" in sample_info
+        if has_hic1 != has_hic2:
+            raise WorkflowError(
+                f'Sample "{sample}" must define both "hic1" and "hic2" or neither.'
+            )
+
+        validate_optional_string(sample, sample_info, "hic1")
+        validate_optional_string(sample, sample_info, "hic2")
+        validate_optional_string(sample, sample_info, "ultralong")
+
+        lineage = busco_cfg.get(sample, "eukaryota")
+        if not isinstance(lineage, str):
+            raise WorkflowError(
+                f'BUSCO lineage for sample "{sample}" must be a string or omitted.'
+            )
+
+
+validate_config()
+samples = config["samples"]
 hifi_outdir = config["hifi_outdir"]
 assem_outdir = config["assem_outdir"]
 inter_outdir = config["intermediate_outdir"]
 
+# INPUT FUNCTIONS ######################################
+
+#Input function to get reads
+def get_reads(wildcards):
+    sample_info = config["samples"][wildcards.sample]
+    #if have hifi reads (i.e. have "hifi" key in config dict)
+    if 'hifi' in sample_info:
+        return normalize_read_list(sample_info["hifi"], wildcards.sample, "hifi")
+    #if have ONT reads
+    elif 'nanopore' in sample_info:
+        return normalize_read_list(sample_info["nanopore"], wildcards.sample, "nanopore")
+    raise WorkflowError(
+        f'Sample "{wildcards.sample}" must define either "hifi" or "nanopore" reads.'
+    )
+
+#Fxn to get reads for hifiasm step, based on whether originally had BAM files or fastq files
+def get_assem_input(wildcards):
+    read_type = config["samples"][wildcards.sample]["readFileType"]
+    if read_type == "bam":
+        return f"{inter_outdir}/{wildcards.sample}_combined_reads.fromBam.fastq.gz"
+    elif read_type == "fastq":
+        return f"{inter_outdir}/{wildcards.sample}_combined_reads.fastq.gz"
+    raise WorkflowError(
+        f'Sample "{wildcards.sample}" has unsupported readFileType "{read_type}".'
+    )
+
+#Fxn to get assembly parameters for hifiasm step, based on available data
+def get_assem_params(wildcards):
+    samp = config["samples"][wildcards.sample]
+    params = []
+    # ONT assembly, need to add --ont flag
+    if samp.get("nanopore"):
+        params.append("--ont")
+    # HiC data
+    if samp.get("hic1"):
+        params.append(f'--h1 {samp["hic1"]}')
+    if samp.get("hic2"):
+        params.append(f'--h2 {samp["hic2"]}')
+    # Ultralong data
+    if samp.get("ultralong"):
+        params.append(f'--ul {samp["ultralong"]}')
+    return " ".join(params)
+
+#Fxn to handle different named output from hifiasm so can standardize naming
+def checkHiC(wildcards):
+    sample_info = config["samples"][wildcards.sample]
+    #If have HiC reads
+    if sample_info.get("hic1"):
+        return "true"
+    else:
+        return "false"
+
+def get_lineage(wildcards):
+    lineage = config.get("busco", {}).get(wildcards.sample, "auto")
+    if lineage == "auto":
+        return "--autolineage"
+    else:
+        return f"-l {lineage}"
+
+###########################################################
+
+wildcard_constraints:
+    haplo="p_ctg|hap1\\.p_ctg|hap2\\.p_ctg"
 
 rule all:
     input:
-        expand("results/assembly_qc/{sample}.{haplo}.quast/report.txt", haplo=haplotypes, sample=samples)
+        expand("results/assembly_qc/{sample}.{haplo}.quast/report.txt", haplo=haplotypes, sample=samples),
+        expand("results/assembly_qc/{sample}.p_ctg.compleasm/summary.txt", sample=samples),
+        expand("results/assembly_qc/{sample}.p_ctg.merqury", sample=samples)
 
-#WIP: need options for demultiplexing
+
+#Used if reads in BAM format
 rule bam2fastq:
     input:
-        #files = config["reads"].split(" ")
-        #Call input function
+        #Call input function; returns a list of files
         get_reads
     output:
-        inter_outdir + "/{sample}_combined_reads.fastq.gz"
+        inter_outdir + "/{sample}_combined_reads.fromBam.fastq.gz"
     conda:
         "envs/bam2fastq.yaml"
     params:
-        prefix = inter_outdir + "/{sample}_combined_reads"
+        tmpdir = inter_outdir + "/{sample}_bam_fastq_tmp"
     shell:
         """
-        file_array=({input})
+        mkdir -p $(dirname {output})
+        rm -rf {params.tmpdir}
+        mkdir -p {params.tmpdir}
 
-        for file in "${{file_array[@]}}"; do
-            pbindex $file
+        file_array=({input})
+        for i in "${{!file_array[@]}}"; do
+            samtools fastq "${{file_array[$i]}}" > {params.tmpdir}/part_${{i}}.fastq
         done
 
-        bam2fastq -o {params.prefix} {input}
-
-        # if [ "${{#file_array[@]}}" -eq 1 ]; then
-        #     bedtools bamtofastq -i {input} -fq {params.prefix}.fastq
-        #     gzip {params.prefix}.fastq
-        # elif [ "${{#file_array[@]}}" -gt 1 ]; then
-        #     samtools merge {params.prefix}_combined_reads.bam {input}
-        #     bedtools bamtofastq -i {params.prefix}_combined_reads.bam -fq {params.prefix}.fastq
-        #     gzip {params.prefix}.fastq
-        # fi
+        cat {params.tmpdir}/part_*.fastq | gzip > {output}
+        rm -rf {params.tmpdir}
         """
 
-
-rule adapterfilt:
+#Used if reads are in fastq format
+rule combineFastq:
     input:
-        inter_outdir + "/{sample}_combined_reads.fastq.gz"
+        #Call input function; returns a list of files
+        get_reads
     output:
-        temp(hifi_outdir + "/{sample}.filt.fastq.gz")
-    conda:
-        "envs/adapter.yaml"
+        inter_outdir + "/{sample}_combined_reads.fastq.gz"
     shell:
-        "cutadapt --discard-trimmed -j {threads} --overlap=35 -b ATCTCTCTCAACAACAACAACGGAGGAGGAGGAAAAGAGAGAGAT -b ATCTCTCTCTTTTCCTCCTCCTCCGTTGTTGTTGTTGAGAGAGAT -o {output} {input}"
+        """
+        mkdir -p $(dirname {output})
+        file_array=({input})
+        if [[ "${{#file_array[@]}}" -eq 1 ]]; then
+            cp "${{file_array[0]}}" {output}
+        else
+            zcat "${{file_array[@]}}" | gzip > {output}
+        fi
+        """
 
-#WIP: how to handle if want diploid assembly, or primary only? Separate rules?? Flags??
-#Three options: hifi-only (partially phased or primary/alternate), HiC integrated, trio-binning (don't include, involves lots of steps)
+# WIP: need more sophsiticated method to trim reads that works for both ONT and PB...
+#WIP: maybe lima for PB, but porechop abandonware for ONT...
+# rule adapterfilt:
+#     input:
+#         inter_outdir + "/{sample}_combined_reads.fastq.gz"
+#     output:
+#         temp(hifi_outdir + "/{sample}.filt.fastq.gz")
+#     conda:
+#         "envs/adapter.yaml"
+#     shell:
+#         "cutadapt --discard-trimmed -j {threads} --overlap=35 -b ATCTCTCTCAACAACAACAACGGAGGAGGAGGAAAAGAGAGAGAT -b ATCTCTCTCTTTTCCTCCTCCTCCGTTGTTGTTGTTGAGAGAGAT -o {output} {input}"
+
+
 rule hifiasm:
     input:
-        hifi_outdir + "/{sample}.filt.fastq.gz"
+        get_assem_input
     output:
         pasm = hifi_outdir + "/{sample}.p_ctg.gfa",
         hap1asm = hifi_outdir + "/{sample}.hap1.p_ctg.gfa",
@@ -89,33 +222,21 @@ rule hifiasm:
     conda:
         "envs/hifiasm.yaml"
     params:
-        hic = config["use_hiC"],
-        hic1 = config["hiC_read1"],
-        hic2 = config["hiC_read2"],
-        ont = config["use_ont"],
-        ontReads = config["ont_reads"],
-        outdir = hifi_outdir + "/{sample}"
+        outdir = hifi_outdir + "/{sample}",
+        assemOptions = get_assem_params,
+        hasHic = checkHiC
     log:
         "logs/{sample}.hifiasm.out"
-    shell: #The output naming format is slightly different in Hifiasm based on mode; this logic deals with that by renaming output
+    shell: #The output naming format is slightly different in Hifiasm based if have HiC data; this logic deals with that by renaming output to a standard
         """
-        if [[ "{params.hic}" == "true" ]] && [[ "{params.ont}" == "true" ]]; then
-            hifiasm -t {threads} --ul {params.ontReads} --h1 {params.hic1} --h2 {params.hic2} -o {params.outdir} {input} 2> {log}
+        mkdir -p $(dirname {log})
+        hifiasm -t {threads} {params.assemOptions} -o {params.outdir} {input} &> {log}
+
+        if [[ "{params.hasHic}" == "true" ]]; then
             mv {params.outdir}.hic.p_ctg.gfa {output.pasm}
             mv {params.outdir}.hic.hap1.p_ctg.gfa {output.hap1asm}
             mv {params.outdir}.hic.hap2.p_ctg.gfa {output.hap2asm}
-        elif [[ "{params.hic}" == "true" ]] && [[ "{params.ont}" == "false" ]]; then
-            hifiasm -t {threads} --h1 {params.hic1} --h2 {params.hic2} -o {params.outdir} {input} 2> {log}
-            mv {params.outdir}.hic.p_ctg.gfa {output.pasm}
-            mv {params.outdir}.hic.hap1.p_ctg.gfa {output.hap1asm}
-            mv {params.outdir}.hic.hap2.p_ctg.gfa {output.hap2asm}
-        elif [[ "{params.hic}" == "false" ]] && [[ "{params.ont}" == "true" ]]; then
-            hifiasm -t {threads} --ul {params.ontReads} -o {params.outdir} {input} 2> {log}
-            mv {params.outdir}.bp.p_ctg.gfa {output.pasm}
-            mv {params.outdir}.bp.hap1.p_ctg.gfa {output.hap1asm}
-            mv {params.outdir}.bp.hap2.p_ctg.gfa {output.hap2asm}
-        else
-            hifiasm -t {threads} -o {params.outdir} {input} 2> {log}
+        elif [[ "{params.hasHic}" == "false" ]]; then
             mv {params.outdir}.bp.p_ctg.gfa {output.pasm}
             mv {params.outdir}.bp.hap1.p_ctg.gfa {output.hap1asm}
             mv {params.outdir}.bp.hap2.p_ctg.gfa {output.hap2asm}
@@ -148,6 +269,62 @@ rule quast:
     conda:
         "envs/quast.yaml"
     log:
-        "logs/{sample}.{haplo}/quast_log/"
+        "logs/{sample}.{haplo}/quast_log"
     shell:
-        "quast.py -t {threads} --eukaryote -o {params.prefix} {input} &> {log}"
+        """
+        mkdir -p $(dirname {log})
+        quast.py -t {threads} -o {params.prefix} {input} &> {log}
+        """
+
+rule meryl_count:
+    input:
+        get_assem_input
+    output:
+        db=directory("results/assembly_qc/{sample}.reads.k31.meryl")
+    conda:
+        "envs/merqury.yaml"
+    params:
+        k=31
+    log:
+        "logs/{sample}.meryl_count.out"
+    shell:
+        """
+        mkdir -p $(dirname {log})
+        meryl count k={params.k} output {output.db} {input} &> {log}
+        """
+
+rule merqury:
+    input:
+        db="results/assembly_qc/{sample}.reads.k31.meryl",
+        asm=assem_outdir + "/{sample}.p_ctg.fa"
+    output:
+        directory("results/assembly_qc/{sample}.p_ctg.merqury")
+    conda:
+        "envs/merqury.yaml"
+    params:
+        prefix="merqury_{sample}.p_ctg"
+    shell:
+        """
+        mkdir -p {output}
+        merqury.sh {input.db} {input.asm} {params.prefix}
+        mv merqury_* {output}
+        """
+
+#Add in compleasm/BUSCO for QC (default: eukaryota db)
+rule busco:
+    input:
+        assem_outdir + "/{sample}.p_ctg.fa"
+    output:
+        "results/assembly_qc/{sample}.p_ctg.compleasm/summary.txt"
+    conda:
+        "envs/compleasm.yaml"
+    log:
+        "logs/{sample}_compleasm.out"
+    params:
+        lineage = get_lineage,
+        prefix="results/assembly_qc/{sample}.p_ctg.compleasm"
+    shell:
+        """
+        mkdir -p $(dirname {log})
+        compleasm run -a {input} -o {params.prefix} -t {threads} {params.lineage} &> {log}
+        """

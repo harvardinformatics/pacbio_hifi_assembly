@@ -3,15 +3,15 @@ jobs: 100
 
 default-resources:
   slurm_account: 'informatics'
-  slurm_partition: 'shared'
 
 set-threads:
   bam2fastq: 1
   adapterfilt: 4
   hifiasm: 20
-  gfatofasta: 1
-  renamecontigs: 1
+  gfa_to_fasta: 1
+  rename_contig: 1
   quast: 4
+  busco: 4
 
 set-resources:
   bam2fastq:
@@ -19,41 +19,58 @@ set-resources:
     tasks: 1 
     cpus_per_task: 1
     mem_mb: 36000
-    runtime: 4320
-    slurm_partition: "shared"
+    runtime: "72h"
+  combineFastq:
+    nodes: 1
+    tasks: 1 
+    cpus_per_task: 1
+    mem_mb: 36000
+    runtime: "72h"
   adapterfilt:
     nodes: 1
     tasks: 1
     cpus_per_task: 4
     mem_mb: 36000
-    runtime: 4320
-    slurm_partition: "shared"
+    runtime: "72h"
   hifiasm:
     nodes: 1
     tasks: 1
-    cpus_per_task: 20
-    mem_mb: 400000
-    runtime: 20160
-    slurm_partition: "intermediate"
+    cpus_per_task: 4
+    mem_mb: 100000
+    runtime: "1d"
   gfa_to_fasta:
     nodes: 1
     tasks: 1
     cpus_per_task: 1
     mem_mb: 16000
-    runtime: 720
-    slurm_partition: "shared"
-  rename_contigs:
+    runtime: "12h"
+  rename_contig:
     nodes: 1
     tasks: 1
     cpus_per_task: 1
     mem_mb: 8000
-    runtime: 720
-    slurm_partition: "shared"
+    runtime: "12h"
   quast:
     nodes: 1
     tasks: 1
     cpus_per_task: 4
     mem_mb: 16000
-    runtime: 720
-    slurm_partition: "shared"
-
+    runtime: "12h"
+  busco:
+    nodes: 1
+    tasks: 1
+    cpus_per_task: 4
+    mem_mb: 16000
+    runtime: "12h"
+  meryl_count:
+    nodes: 1
+    tasks: 1
+    cpus_per_task: 4
+    mem_mb: 32000
+    runtime: "12h"
+  merqury:
+    nodes: 1
+    tasks: 1
+    cpus_per_task: 4
+    mem_mb: 16000
+    runtime: "12h"
