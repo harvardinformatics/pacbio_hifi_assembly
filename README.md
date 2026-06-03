@@ -83,12 +83,10 @@ This workflow uses a workflow-specific profile that configures the resources giv
 Resources are defined in the `profile/slurm/config.yaml` file. The only line you need to change is the `slurm_account` line, where you should set it to your Cannon cluster account. If you are running into memory issues with the any given step, you can increase the amount of RAM allocated by changing the `mem_mb` line. 
 
 
-## Running the pipeline  
+## Running the pipeline
 From the main directory, navigate into the `workflow/` subdirectory, which contains the `Snakefile` that determines the order in which the pipeline runs. Before you run the pipeline for real, it can be useful to first do a "dry run" to make sure the pipeline is configured properly and all the files are accessible. 
 
-(NOTE: if you created your own version of the `config/config.yaml` file, be sure to change the `--configfile` parameter to point towards the correct location of the YAML file)
-
-`snakemake --dry-run --profile ../profiles/slurm --configfile ../config/config.yaml`
+`snakemake --dry-run --profile ../profiles/slurm --configfile ../config/config_test.yaml -s Snakefile`
 
 If this works, you should see a table summarizing number of jobs that will be submitted along with some text saying "This was a dry-run." If it worked, you are good to submit it to the cluster.
 
@@ -107,9 +105,6 @@ In the `workflow/` directory there is an example shell script to run the pipelin
 ```
 sh run_pipe.sh &> pipe.out &
 ```
-
-You can now detach from the `screen` session (press `Ctrl + A` then `D`) and log out and the parent job will continue running in the background! Keep an eye on the pipeline progress by checking the `pipe.out` file and/or the files in the `logs/` directory.
-
 
 ### Example shell submission script
 
@@ -137,3 +132,7 @@ snakemake \
     -s Snakefile \
     "$@"
 ```  
+
+(NOTE: when doing a full run with your own data, if you created your own version of the `config/config.yaml` file, be sure to change the `--configfile` parameter to point towards the correct location of the YAML file!)
+
+You can now detach from the `screen` session (press `Ctrl + A` then `D`) and log out and the parent job will continue running in the background! Keep an eye on the pipeline progress by checking the `pipe.out` file and/or the files in the `logs/` directory.
