@@ -116,7 +116,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
 
 # Activate python and your previously installed snakemake conda environment
-source /n/holylfs05/LABS/informatics/Users/dkhost/mamba/bin/activate snakemake
+source activate snakemake
 
 # Set env variable with path to the Cannon snakemake config for auto partition selection
 SMK_PART_CFG="/n/holylfs05/LABS/informatics/Everyone/internal-share/cannon-snakemake-cfg/cannon-snakemake.yml"
