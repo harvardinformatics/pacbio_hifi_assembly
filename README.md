@@ -100,6 +100,12 @@ Log onto Cannon, then start a `screen` session like so:
 screen -S snakemake_hifiasm
 ```
 
+If you are using the version of `python` that is installed on the Cannon cluster (i.e. not your own install):
+
+```
+module load python
+```
+
 In the `workflow/` directory there is an example shell script to run the pipeline called `run_pipe.sh` (contents below). Within our `screen` session run the submission script by entering:
 
 ```
@@ -115,8 +121,8 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
 
-# Activate python and your previously installed snakemake conda environment
-source activate snakemake
+# Activate your previously installed snakemake conda environment
+conda activate snakemake
 
 # Set env variable with path to the Cannon snakemake config for auto partition selection
 SMK_PART_CFG="/n/holylfs05/LABS/informatics/Everyone/internal-share/cannon-snakemake-cfg/cannon-snakemake.yml"
