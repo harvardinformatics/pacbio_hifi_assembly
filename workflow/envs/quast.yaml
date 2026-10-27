@@ -3,3 +3,4 @@ channels:
   - conda-forge
 dependencies:
   - quast
+  - python=3.11
